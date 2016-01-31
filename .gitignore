@@ -60,4 +60,7 @@ target/
 *.ipynb_checkpoints
 
 # Data directories
-data/*
+project/data/*
+
+# Pycharm shit
+project/.idea/
