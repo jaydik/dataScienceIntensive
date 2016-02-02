@@ -129,41 +129,35 @@ def main():
         if not_a_real_movie(fields[1]):
             continue
 
-        fields = fields[1].split(b'  ')
-        raw_title = fields[0]
+        # fields = fields[1].split(b'  ')
+        # print(fields)
+        raw_title = fields[1].split(b'  ')[0]
+        extra_crap = fields[1].split(b'  ')[1:]
         if raw_title not in interesting_titles:
             continue
 
-        # if len(fields) < 2:
-        #     continue
-        #
-        # if fields[1].startswith(b'('):  # uncredited, archive footage, etc
-        #     del fields[1]
-        #     if len(fields) < 2:
-        #         continue
-
-        # if not fields[1].startswith(b'['):
-        #     continue
-        #
-        # character = decode_ascii(fields[1].strip(b'[]'))
-        #
-        if len(fields) >= 2:   # and fields[2].startswith(b'('):
-            writer_type = fields[1].strip(b'()')
-        else:
-            writer_type = 'null'
-
         title, year = parse_title(raw_title)
+
         if title is None:
             continue
 
-        # if character == 'N/A':
-        #     clist = ['(N/A)']
-        # else:
-        #     clist = character.split('/')
-        #
-        # for character in clist:
-        #     if not character:
-        #         continue
+        writer_type = ''
+        for crap in extra_crap:
+            if re.match(b'\(\d{4}\)', crap):
+                continue
+            if re.match(b'\<\d+,\d+,\d+\>', crap):
+                continue
+            if b'as' in crap:
+                continue
+            if re.search(b'(\w+)\s+"[^"]+"', crap):
+                writer_type = re.search(b'(\w+) "[^"]+"', crap).group(1).decode('latin-1')
+                break
+            if re.search(b'(\w+)\)\s+\([^\)]+', crap):
+                writer_type = re.search(b'(\w+)\)\s+\([^\)]+', crap).group(1).decode('latin-1')
+                break
+
+            writer_type = crap.strip(b'()').decode('latin-1')
+
         output.writerow((title, year, name, writer_type))
 
     print('Finished writing "writers.csv"')
