@@ -43,4 +43,4 @@ else
     curl ftp://ftp.fu-berlin.de/pub/misc/movies/database/ratings.list.gz -o data/ratings.list.gz
 fi
 
-python ./build.py
+python ./parseRawFiles.py

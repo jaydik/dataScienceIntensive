@@ -125,12 +125,12 @@ def main():
         if fields[0]:
             name = decode_ascii(fields[0])
             name = swap_names(name)
+        else:
+            name = ''
 
         if not_a_real_movie(fields[1]):
             continue
 
-        # fields = fields[1].split(b'  ')
-        # print(fields)
         raw_title = fields[1].split(b'  ')[0]
         extra_crap = fields[1].split(b'  ')[1:]
         if raw_title not in interesting_titles:
@@ -145,7 +145,7 @@ def main():
         for crap in extra_crap:
             if re.match(b'\(\d{4}\)', crap):
                 continue
-            if re.match(b'\<\d+,\d+,\d+\>', crap):
+            if re.match(b'<\d+,\d+,\d+>', crap):
                 continue
             if b'as' in crap:
                 continue
@@ -161,6 +161,32 @@ def main():
         output.writerow((title, year, name, writer_type))
 
     print('Finished writing "writers.csv"')
+
+    print('Reading ratings from "ratings.list.gz"')
+
+    lines = iter(gzip.open('data/ratings.list.gz'))
+    output = csv.writer(open('./data/ratings.csv', 'w'))
+    output.writerow(('title', 'year', 'rating', 'votes'))
+
+    line = next(lines)
+    while line != b'MOVIE RATINGS REPORT\n':
+        line = next(lines)
+
+    line = next(lines)
+    assert next(lines) == b'New  Distribution  Votes  Rank  Title\n'
+
+    ratings_pattern = re.compile(b'[0-9\.\*]{10}\s+(?P<votes>\d+)\s+(?P<rating>\d+\.\d+)\s+(?P<title>.*)$')
+    for line in lines:
+        if line.startswith(b'\n'):
+            break
+
+        matches = ratings_pattern.search(line).groupdict()
+
+        if matches['title'] not in interesting_titles:
+            continue
+        title, year = parse_title(matches['title'])
+
+        output.writerow((title, year, float(matches['rating']), int(matches['votes'])))
 
 
 def not_a_real_movie(line):
