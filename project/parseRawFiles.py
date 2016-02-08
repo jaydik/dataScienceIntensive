@@ -125,8 +125,6 @@ def main():
         if fields[0]:
             name = decode_ascii(fields[0])
             name = swap_names(name)
-        else:
-            name = ''
 
         if not_a_real_movie(fields[1]):
             continue
@@ -172,7 +170,7 @@ def main():
     while line != b'MOVIE RATINGS REPORT\n':
         line = next(lines)
 
-    line = next(lines)
+    next(lines)
     assert next(lines) == b'New  Distribution  Votes  Rank  Title\n'
 
     ratings_pattern = re.compile(b'[0-9\.\*]{10}\s+(?P<votes>\d+)\s+(?P<rating>\d+\.\d+)\s+(?P<title>.*)$')
