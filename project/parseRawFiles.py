@@ -251,7 +251,6 @@ def parse_title(raw_title):
         season = ''
         episode_num = ''
     else:
-        print("done goof'd on " + title)
         return None, None, None, None, None
 
     if numeral is not None:
