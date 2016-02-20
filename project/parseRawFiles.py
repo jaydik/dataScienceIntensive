@@ -29,7 +29,7 @@ def main():
     print('Reading "genres.list.gz" to find interesting movies')
 
     for line in lines:
-        if not_a_real_movie(line):
+        if not_a_real_tv_show(line):
             continue
 
         fields = split_on_tabs(line.strip(b'\n'))
@@ -56,10 +56,10 @@ def main():
 
     with open('./data/titles.csv', 'w') as f:
         output = csv.writer(f)
-        output.writerow(('title', 'year'))
+        output.writerow(('title', 'year', 'episode_name', 'season', 'episode_num'))
         for raw_title in interesting_titles:
-            title_and_year = parse_title(raw_title)
-            output.writerow(title_and_year)
+            title, year, episode_name, season, episode_num = parse_title(raw_title)
+            output.writerow([title, year, episode_name, season, episode_num])
 
     print('Finished writing "titles.csv"')
     print('Reading release dates from "release-dates.list.gz"')
@@ -71,10 +71,10 @@ def main():
     assert next(lines) == b'==================\n'
 
     output = csv.writer(open('./data/release_dates.csv', 'w'))
-    output.writerow(('title', 'year', 'country', 'date'))
+    output.writerow(('title', 'year', 'episode_name', 'season', 'episode_num', 'country', 'date'))
 
     for line in lines:
-        if not_a_real_movie(line):
+        if not_a_real_tv_show(line):
             continue
 
         if line.startswith(b'----'):
@@ -85,10 +85,10 @@ def main():
             continue
 
         raw_title = fields[0]
-        if raw_title not in interesting_titles:
+        if raw_title.split(b'{')[0].strip() not in interesting_titles:
             continue
 
-        title, year = parse_title(raw_title)
+        title, year, episode_name, season, episode_num = parse_title(raw_title)
         if title is None:
             continue
 
@@ -97,13 +97,13 @@ def main():
             date = datetime.strptime(datestr, '%d %B %Y').date()
         except ValueError:
             continue  # incomplete dates like "April 2014"
-        output.writerow((title, year, country, date))
+        output.writerow((title, year, episode_name, season, episode_num, country, date))
 
     print('Finished writing "release_dates.csv"')
 
     print('Reading writers from "writers.list.gz"')
     output = csv.writer(open('./data/writers.csv', 'w'))
-    output.writerow(('title', 'year', 'name', 'type'))
+    output.writerow(('title', 'year', 'episode_name', 'season', 'episode_num', 'name', 'type'))
 
     lines = iter(gzip.open('./data/writers.list.gz'))
 
@@ -113,6 +113,7 @@ def main():
 
     assert b'----' in next(lines)
 
+    name = ''
     for line in lines:
         if line.startswith(b'----------------------'):
             break
@@ -126,15 +127,15 @@ def main():
             name = decode_ascii(fields[0])
             name = swap_names(name)
 
-        if not_a_real_movie(fields[1]):
+        if not_a_real_tv_show(fields[1]):
             continue
 
         raw_title = fields[1].split(b'  ')[0]
         extra_crap = fields[1].split(b'  ')[1:]
-        if raw_title not in interesting_titles:
+        if raw_title.split(b'{')[0].strip() not in interesting_titles:
             continue
 
-        title, year = parse_title(raw_title)
+        title, year, episode_name, season, episode_num = parse_title(raw_title)
 
         if title is None:
             continue
@@ -156,7 +157,7 @@ def main():
 
             writer_type = crap.strip(b'()').decode('latin-1')
 
-        output.writerow((title, year, name, writer_type))
+        output.writerow((title, year, episode_name, season, episode_num, name, writer_type))
 
     print('Finished writing "writers.csv"')
 
@@ -164,7 +165,7 @@ def main():
 
     lines = iter(gzip.open('data/ratings.list.gz'))
     output = csv.writer(open('./data/ratings.csv', 'w'))
-    output.writerow(('title', 'year', 'rating', 'votes'))
+    output.writerow(('title', 'year', 'episode_name', 'season', 'episode_num', 'rating', 'votes'))
 
     line = next(lines)
     while line != b'MOVIE RATINGS REPORT\n':
@@ -180,43 +181,84 @@ def main():
 
         matches = ratings_pattern.search(line).groupdict()
 
-        if matches['title'] not in interesting_titles:
+        if matches['title'].split(b'{')[0].strip() not in interesting_titles:
             continue
-        title, year = parse_title(matches['title'])
+        title, year, episode_name, season, episode_num = parse_title(matches['title'])
 
-        output.writerow((title, year, float(matches['rating']), int(matches['votes'])))
+        output.writerow((title,
+                         year,
+                         episode_name,
+                         season,
+                         episode_num,
+                         float(matches['rating']),
+                         int(matches['votes'])))
 
 
-def not_a_real_movie(line):
+def not_a_real_tv_show(line):
     return (
-        b'{' in line or        # TV episode
-        b' (????' in line or   # Unknown year
-        b' (TV)' in line or    # TV Movie
-        b' (V)' in line or     # Video
-        b' (VG)' in line       # Video game
+        b'"' not in line or
+        b'{{SUSPENDED}}' in line or        # Suspended
+        b' (????' in line or               # Unknown year
+        b' (TV)' in line or                # TV Movie
+        b' (V)' in line or                 # Video
+        b' (VG)' in line                   # Video game
         )
 
 
-match_title = re.compile(r'^(.*) \((\d+)(/[IVXL]+)?\)$').match
+match_title_full = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{([^}]+)(\(#(\d+)\.(\d+)\))\}$').match
+match_title_no_ep = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{(\(?[^}(]+)?(\(Pilot\))?\}$').match
+match_title_no_tit = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{\(#(\d+)\.(\d+)\)\}$').match
+match_title_series = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)$').match
 
 
 def parse_title(raw_title):
     try:
         title = raw_title.decode('ascii')
     except UnicodeDecodeError:
-        return None, None
+        return None, None, None, None, None
 
-    m = match_title(title)
-    title = m.group(1)
-    year = int(m.group(2))
-    numeral = m.group(3)
+    m = match_title_full(title)
+    n = match_title_no_ep(title)
+    o = match_title_no_tit(title)
+    p = match_title_series(title)
+
+    if m:
+        title = m.group(1)
+        year = int(m.group(2))
+        numeral = m.group(3)
+        episode_name = m.group(4)
+        season = m.group(6)
+        episode_num = m.group(7)
+    elif n:
+        title = n.group(1)
+        year = int(n.group(2))
+        numeral = n.group(3)
+        episode_name = n.group(4)
+        season = ''
+        episode_num = ''
+    elif o:
+        title = o.group(1)
+        year = int(o.group(2))
+        numeral = o.group(3)
+        episode_name = ''
+        season = o.group(4)
+        episode_num = o.group(5)
+    elif p:
+        title = p.group(1)
+        year = int(p.group(2))
+        numeral = p.group(3)
+        episode_name = ''
+        season = ''
+        episode_num = ''
+    else:
+        return None, None, None, None, None
 
     if numeral is not None:
         numeral = numeral.strip('/')
         if numeral != 'I':
             title = '{0} ({1})'.format(title, numeral)
 
-    return title, year
+    return title, year, episode_name, season, episode_num
 
 
 def swap_names(name):

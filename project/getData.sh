@@ -44,3 +44,4 @@ else
 fi
 
 python ./parseRawFiles.py
+python ./combineData.py
