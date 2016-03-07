@@ -23,6 +23,7 @@ def main():
     # Merge the datasets
     data = english_speaking_titles.merge(ratings, how='inner')
     data = data.merge(writers)
+    data['title'] = data['title'].apply(lambda x: x.strip('"'))
 
     print('Writing mainData.csv')
     data.to_csv('./data/mainData.csv', index=False)
