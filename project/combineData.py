@@ -17,7 +17,8 @@ def main():
 
     # This function is taken from how IMDB calculates raitings rank, helps to compare ones without any votes
     ratings['rank'] = (
-        (ratings['votes'] / (ratings['votes'] + 25000)) * ratings['rating'] + (25000 / (ratings['votes'] + 25000))*6.9
+        (ratings['votes'] / (ratings['votes'] + 25000)) * ratings['rating'] +
+        (25000 / (ratings['votes'] + 25000)) * 6.9  # 6.9 is the mean rating of all IMDB
                        )
 
     # Merge the datasets

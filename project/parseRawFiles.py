@@ -1,4 +1,8 @@
-"""Build the tutorial data files from the IMDB *.list.gz files."""
+"""Build the tutorial data files from the IMDB *.list.gz files.
+    Most of the credit due to Brandon Rhodes, with modifications
+    Original available at https://github.com/brandon-rhodes/pycon-pandas-tutorial
+"""
+
 
 import csv
 import gzip
@@ -41,6 +45,7 @@ def main():
         except UnicodeDecodeError:
             continue
 
+        # remove porn, short films, docs (unecessary now that we target TV)
         if genre in (b'Adult', b'Documentary', b'Short'):
             uninteresting_titles.add(raw_title)
         else:
@@ -140,6 +145,9 @@ def main():
         if title is None:
             continue
 
+        # There are a lot of different writer types, they are messy
+        # This loop goes through and removes known non-writer type strings, only looking
+        # for those I've seen in the wild
         writer_type = ''
         for crap in extra_crap:
             if re.match(b'\(\d{4}\)', crap):
@@ -205,18 +213,26 @@ def not_a_real_tv_show(line):
         )
 
 
-match_title_full = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{([^}]+)(\(#(\d+)\.(\d+)\))\}$').match
-match_title_no_ep = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{(\(?[^}(]+)?(\(Pilot\))?\}$').match
-match_title_no_tit = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{\(#(\d+)\.(\d+)\)\}$').match
-match_title_series = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)$').match
-
-
 def parse_title(raw_title):
+    """
+    Takes raw title, tries several different patterns to match and pull out information
+    :param raw_title: string of the title as seen in the db file
+    :return: title, year, episode_name, season, episode_num as parsed by the function
+    """
+
+    match_title_full = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{([^}]+)(\(#(\d+)\.(\d+)\))\}$').match
+    match_title_no_ep = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{(\(?[^}(]+)?(\(Pilot\))?\}$').match
+    match_title_no_tit = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)\s+\{\(#(\d+)\.(\d+)\)\}$').match
+    match_title_series = re.compile(r'^(.*)\s+\((\d+)(/[IVXL]+)?\)$').match
+
+
     try:
         title = raw_title.decode('ascii')
     except UnicodeDecodeError:
         return None, None, None, None, None
 
+    # Need to try all the different combinations, starting with the most restrictive
+    # ending with the least
     m = match_title_full(title)
     n = match_title_no_ep(title)
     o = match_title_no_tit(title)
@@ -262,6 +278,11 @@ def parse_title(raw_title):
 
 
 def swap_names(name):
+    """
+    Last Name, First Name needs to be switched.
+    :param name: name to be parsed
+    :return: reversed name
+    """
     if name.endswith(' (I)'):
         name = name[:-4]
     if ',' in name:
