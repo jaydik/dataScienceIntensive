@@ -38,6 +38,21 @@ labels_train   = labels_train[:150]
 
 
 ### your code goes here
+from sklearn.metrics import accuracy_score
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier()
+
+tree.fit(features_train, labels_train)
+
+pred = tree.predict(features_test)
+
+print max(tree.feature_importances_)
+print list(tree.feature_importances_).index(max(tree.feature_importances_))
+print vectorizer.get_feature_names()[list(tree.feature_importances_).index(max(tree.feature_importances_))]
+
+print accuracy_score(pred, labels_test)
+
 
 
 

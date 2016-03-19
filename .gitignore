@@ -64,3 +64,6 @@ project/data/*
 
 # Pycharm shit
 project/.idea/
+
+#ud-120 pycharm
+ud120-projects/.idea
